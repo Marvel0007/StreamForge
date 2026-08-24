@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: streamforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: streamforge
+      POSTGRES_PASSWORD: streamforge_dev
+      POSTGRES_DB: streamforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  redis:
+    image: redis:8
+    container_name: streamforge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
