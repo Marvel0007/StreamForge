@@ -17,7 +17,9 @@ export async function findJobById(id: string) {
   });
 }
 
-export async function findJobsByFileId(fileId: string) {
+export async function findJobsByFileId(
+  fileId: string,
+) {
   return prisma.job.findMany({
     where: {
       fileId,
@@ -28,25 +30,9 @@ export async function findJobsByFileId(fileId: string) {
   });
 }
 
-export async function updateJobStatus(
+export async function incrementJobAttempts(
   id: string,
-  status: Prisma.JobUpdateInput["status"],
 ) {
-  if (status === undefined) {
-    throw new Error("Job status is required");
-  }
-
-  return prisma.job.update({
-    where: {
-      id,
-    },
-    data: {
-      status,
-    },
-  });
-}
-
-export async function incrementJobAttempts(id: string) {
   return prisma.job.update({
     where: {
       id,
@@ -55,6 +41,20 @@ export async function incrementJobAttempts(id: string) {
       attempts: {
         increment: 1,
       },
+    },
+  });
+}
+
+export async function updateJobStatus(
+  id: string,
+  status: NonNullable<Prisma.JobUpdateInput["status"]>,
+) {
+  return prisma.job.update({
+    where: {
+      id,
+    },
+    data: {
+      status,
     },
   });
 }

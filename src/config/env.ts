@@ -11,6 +11,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
 
   REDIS_URL: z.string().url(),
+
+  LOCAL_STORAGE_ROOT: z.string().default("./storage"),
 });
 
 export const env = envSchema.parse(process.env);

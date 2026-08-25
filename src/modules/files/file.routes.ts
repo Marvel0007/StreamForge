@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { AppError } from "../../shared/errors/app-error.js";
 import {
   createFileRecord,
   getFileByIdForUser,
@@ -13,6 +14,8 @@ import {
   listFilesSchema,
 } from "./file.schema.js";
 import { toFileResponse } from "./file.mapper.js";
+import { randomUUID } from "node:crypto";
+import { putObject } from "../../infrastructure/storage/storage.service.js";
 interface CreateFileBody {
   userId: string;
   originalName: string;
@@ -37,6 +40,54 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
       status: "ok",
       module: "files",
     };
+  });
+
+  app.post("/api/v1/files/upload", async (request, reply) => {
+    const data = await request.file();
+
+    if (!data) {
+      throw new AppError("File is required", 400, "FILE_REQUIRED");
+    }
+
+    const userIdField = data.fields.userId;
+
+    if (
+      !userIdField ||
+      Array.isArray(userIdField) ||
+      !("value" in userIdField)
+    ) {
+      throw new AppError("userId is required", 400, "USER_ID_REQUIRED");
+    }
+
+    const userId = userIdField.value;
+
+    if (typeof userId !== "string" || userId.length === 0) {
+      throw new AppError("userId is required", 400, "USER_ID_REQUIRED");
+    }
+
+    const buffer = await data.toBuffer();
+
+    if (buffer.length === 0) {
+      throw new AppError("File must not be empty", 400, "EMPTY_FILE");
+    }
+
+    const storageKey = `users/${userId}/files/${randomUUID()}`;
+
+    await putObject(storageKey, buffer, data.mimetype);
+
+    const file = await createFileRecord({
+      originalName: data.filename,
+      storageKey,
+      mimeType: data.mimetype,
+      size: BigInt(buffer.length),
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+    });
+
+    return reply.code(201).send(toFileResponse(file));
   });
 
   app.post<{ Body: CreateFileBody }>(
@@ -118,6 +169,5 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 };
-
 
 // cmt5zoook00017srihq2bt0y5

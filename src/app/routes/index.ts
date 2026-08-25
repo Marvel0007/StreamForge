@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { fileRoutes } from "../../modules/files/file.routes.js";
+import { jobRoutes } from "../../modules/jobs/job.routes.js";
+import { storageRoutes } from "../../infrastructure/storage/storage.routes.js";
 
 export const registerRoutes: FastifyPluginAsync = async (app) => {
   app.get("/api/v1/health", async () => {
@@ -11,4 +13,9 @@ export const registerRoutes: FastifyPluginAsync = async (app) => {
   });
 
   await app.register(fileRoutes);
+  await app.register(jobRoutes);
+  app.register(storageRoutes);
 };
+
+// cmt8hq4c90001joril02xyhcz
+// cmt8hq4bv0000jorikckn1sp4

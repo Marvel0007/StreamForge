@@ -1,5 +1,7 @@
 import { Prisma, PrismaClient } from "../../generated/prisma/client.js";
 import { AppError } from "../../shared/errors/app-error.js";
+import { enqueueFileProcessing } from "../jobs/job.queue-service.js";
+
 import {
   createFile,
   deleteFileById,
@@ -9,7 +11,6 @@ import {
   updateFileStatus,
   createFileWithJob,
 } from "./file.repository.js";
-
 
 type FileStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
@@ -37,9 +38,10 @@ export async function createFileRecord(data: Prisma.FileCreateInput) {
     type: "FILE_PROCESSING",
   });
 
+  await enqueueFileProcessing(result.job.id, result.file.id);
+
   return result.file;
 }
-
 export async function getFileById(id: string) {
   const file = await findFileById(id);
 
