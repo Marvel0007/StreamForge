@@ -9,6 +9,8 @@ export function toJobResponse(job: Job) {
     attempts: job.attempts,
     maxAttempts: job.maxAttempts,
     error: job.error,
+    processedBytes: job.processedBytes?.toString() ?? null,
+    processingTimeMs: job.processingTimeMs,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };

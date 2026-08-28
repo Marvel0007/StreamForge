@@ -5,7 +5,7 @@ import {
   findJobsByFileId,
   incrementJobAttempts,
   markJobFailed,
-  updateJobStatus,
+  updateJobAndFileStatus,
 } from "./job.repository.js";
 import { findFileById } from "../files/file.repository.js";
 import { fileProcessingQueue } from "../../infrastructure/queue/file-processing.queue.js";
@@ -88,7 +88,7 @@ export async function changeJobStatus(id: string, status: JobStatus) {
     );
   }
 
-  return updateJobStatus(id, status);
+  return updateJobAndFileStatus(id, job.fileId, status);
 }
 
 export async function recordJobAttempt(id: string) {
@@ -106,7 +106,11 @@ export async function recordJobAttempt(id: string) {
 }
 
 export async function failJob(id: string, error: string) {
-  await getJobById(id);
+  const job = await getJobById(id);
+
+  if (job.status === "FAILED") {
+    return job;
+  }
 
   return markJobFailed(id, error);
 }

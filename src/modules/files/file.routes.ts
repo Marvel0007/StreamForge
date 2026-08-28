@@ -7,6 +7,7 @@ import {
   removeFileForUser,
   removeFile,
   getFileById,
+  downloadFile,
 } from "./file.service.js";
 import { createFileProcessingJob } from "../jobs/job.service.js";
 import {
@@ -134,6 +135,57 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
   );
 
   app.get<{
+    Params: {
+      id: string;
+    };
+    Querystring: {
+      userId: string;
+    };
+  }>(
+    "/api/v1/files/:id/download",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: {
+              type: "string",
+              minLength: 1,
+            },
+          },
+          additionalProperties: false,
+        },
+        querystring: {
+          type: "object",
+          required: ["userId"],
+          properties: {
+            userId: {
+              type: "string",
+              minLength: 1,
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { file, data } = await downloadFile(
+        request.params.id,
+        request.query.userId,
+      );
+
+      return reply
+        .header("Content-Type", file.mimeType)
+        .header(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+        )
+        .send(data);
+    },
+  );
+
+  app.get<{
     Params: { id: string };
     Querystring: FileOwnershipQuery;
   }>(
@@ -172,4 +224,6 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
   );
 };
 
-// cmt5zoook00017srihq2bt0y5
+// cmtbxg7x30000tsri8427kpu5
+// users/cmt5z66z70000fkri9w02objd/files/8c35a1e3-31e7-4266-8e91-ff8e7644086f
+// cmt5z66z70000fkri9w02objd

@@ -1,7 +1,11 @@
 import { Prisma, PrismaClient } from "../../generated/prisma/client.js";
 import { AppError } from "../../shared/errors/app-error.js";
 import { enqueueFileProcessing } from "../jobs/job.queue-service.js";
-
+import {
+  deleteObject,
+  getObject,
+  objectExists,
+} from "../../infrastructure/storage/storage.service.js";
 import {
   createFile,
   deleteFileById,
@@ -50,6 +54,21 @@ export async function getFileById(id: string) {
   }
 
   return file;
+}
+
+export async function downloadFile(id: string, userId: string) {
+  const file = await findFileByIdAndUserId(id, userId);
+
+  if (!file) {
+    throw new AppError("File not found", 404, "FILE_NOT_FOUND");
+  }
+
+  const data = await getObject(file.storageKey);
+
+  return {
+    file,
+    data,
+  };
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -120,10 +139,34 @@ export async function removeFileForUser(id: string, userId: string) {
     throw new AppError("File not found", 404, "FILE_NOT_FOUND");
   }
 
+  const exists = await objectExists(file.storageKey);
+
+  if (!exists) {
+    throw new AppError(
+      "File object not found in storage",
+      404,
+      "STORAGE_OBJECT_NOT_FOUND",
+    );
+  }
+
+  try {
+    await deleteObject(file.storageKey);
+  } catch {
+    throw new AppError(
+      "Failed to delete file from storage",
+      500,
+      "STORAGE_DELETE_FAILED",
+    );
+  }
+
   try {
     await deleteFileById(id);
   } catch {
-    throw new AppError("File not found", 404, "FILE_NOT_FOUND");
+    throw new AppError(
+      "Failed to delete file record",
+      500,
+      "FILE_DELETE_FAILED",
+    );
   }
 
   return file;

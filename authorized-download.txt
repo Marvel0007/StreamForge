@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+content-type: text/plain
+content-disposition: attachment; filename="upload-test.txt"
+content-length: 38
+Date: Thu, 27 Aug 2026 18:57:50 GMT
+Connection: keep-alive
+Keep-Alive: timeout=72
+
+﻿StreamForge multipart upload test

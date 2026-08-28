@@ -1,9 +1,7 @@
 import { prisma } from "../../infrastructure/database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 
-export async function createJob(
-  data: Prisma.JobCreateInput,
-) {
+export async function createJob(data: Prisma.JobCreateInput) {
   return prisma.job.create({
     data,
   });
@@ -14,12 +12,13 @@ export async function findJobById(id: string) {
     where: {
       id,
     },
+    include: {
+      file: true,
+    },
   });
 }
 
-export async function findJobsByFileId(
-  fileId: string,
-) {
+export async function findJobsByFileId(fileId: string) {
   return prisma.job.findMany({
     where: {
       fileId,
@@ -30,9 +29,7 @@ export async function findJobsByFileId(
   });
 }
 
-export async function incrementJobAttempts(
-  id: string,
-) {
+export async function incrementJobAttempts(id: string) {
   return prisma.job.update({
     where: {
       id,
@@ -59,10 +56,7 @@ export async function updateJobStatus(
   });
 }
 
-export async function markJobFailed(
-  id: string,
-  error: string,
-) {
+export async function markJobFailed(id: string, error: string) {
   return prisma.job.update({
     where: {
       id,
@@ -71,5 +65,49 @@ export async function markJobFailed(
       status: "FAILED",
       error,
     },
+  });
+}
+
+export async function updateJobProcessingMetadata(
+  id: string,
+  processedBytes: bigint,
+  processingTimeMs: number,
+) {
+  return prisma.job.update({
+    where: {
+      id,
+    },
+    data: {
+      processedBytes,
+      processingTimeMs,
+    },
+  });
+}
+
+export async function updateJobAndFileStatus(
+  jobId: string,
+  fileId: string,
+  status: NonNullable<Prisma.JobUpdateInput["status"]>,
+) {
+  return prisma.$transaction(async (tx) => {
+    const job = await tx.job.update({
+      where: {
+        id: jobId,
+      },
+      data: {
+        status,
+      },
+    });
+
+    await tx.file.update({
+      where: {
+        id: fileId,
+      },
+      data: {
+        status,
+      },
+    });
+
+    return job;
   });
 }
