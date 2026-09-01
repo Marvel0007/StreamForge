@@ -1,3 +1,5 @@
+import { AppError } from "../../shared/errors/app-error.js";
+
 import { prisma } from "../../infrastructure/database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 
@@ -29,6 +31,22 @@ export async function findFilesByUserId(
   limit: number,
   cursor?: string,
 ) {
+  if (cursor) {
+    const cursorFile = await prisma.file.findFirst({
+      where: {
+        id: cursor,
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!cursorFile) {
+      throw new AppError("Invalid pagination cursor", 400, "INVALID_CURSOR");
+    }
+  }
+
   return prisma.file.findMany({
     where: {
       userId,

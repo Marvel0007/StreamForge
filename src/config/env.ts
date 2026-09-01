@@ -12,6 +12,8 @@ const envSchema = z.object({
 
   REDIS_URL: z.string().url(),
 
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+
   LOCAL_STORAGE_ROOT: z.string().default("./storage"),
 });
 

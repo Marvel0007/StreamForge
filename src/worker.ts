@@ -9,6 +9,7 @@ async function start(): Promise<void> {
     await connectDatabase();
 
     console.log("File processing worker started");
+    console.log("Worker status: HEALTHY");
   } catch (error) {
     console.error("Failed to start worker:", error);
 
@@ -18,7 +19,14 @@ async function start(): Promise<void> {
   }
 }
 
+let isShuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
   console.log(`Worker shutdown signal received: ${signal}`);
 
   await fileProcessingWorker.close();

@@ -1,10 +1,11 @@
 import { AppError } from "../../shared/errors/app-error.js";
 import {
   createJob,
+  findActiveJobByFileId,
   findJobById,
   findJobsByFileId,
   incrementJobAttempts,
-  markJobFailed,
+  resetJobAttempts,
   updateJobAndFileStatus,
 } from "./job.repository.js";
 import { findFileById } from "../files/file.repository.js";
@@ -16,14 +17,28 @@ const VALID_STATUS_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   PENDING: ["PROCESSING", "FAILED"],
   PROCESSING: ["COMPLETED", "FAILED"],
   COMPLETED: [],
-  FAILED: [],
+  FAILED: ["PENDING"],
 };
 
 export async function createFileProcessingJob(fileId: string) {
+  console.log("[job] createFileProcessingJob called:", fileId);
+
   const file = await findFileById(fileId);
 
   if (!file) {
     throw new AppError("File not found", 404, "FILE_NOT_FOUND");
+  }
+
+  const activeJob = await findActiveJobByFileId(fileId);
+
+  console.log("[job] active job found:", activeJob?.id ?? "NONE");
+
+  if (activeJob) {
+    throw new AppError(
+      "File already has an active processing job",
+      409,
+      "ACTIVE_JOB_EXISTS",
+    );
   }
 
   const job = await createJob({
@@ -34,6 +49,8 @@ export async function createFileProcessingJob(fileId: string) {
       },
     },
   });
+
+  console.log("[job] new job created:", job.id);
 
   await fileProcessingQueue.add(
     "file-processing",
@@ -92,16 +109,6 @@ export async function changeJobStatus(id: string, status: JobStatus) {
 }
 
 export async function recordJobAttempt(id: string) {
-  const job = await getJobById(id);
-
-  if (job.attempts >= job.maxAttempts) {
-    throw new AppError(
-      "Maximum job attempts exceeded",
-      409,
-      "MAX_JOB_ATTEMPTS_EXCEEDED",
-    );
-  }
-
   return incrementJobAttempts(id);
 }
 
@@ -112,5 +119,67 @@ export async function failJob(id: string, error: string) {
     return job;
   }
 
-  return markJobFailed(id, error);
+  return updateJobAndFileStatus(id, job.fileId, "FAILED", error);
+}
+
+export async function retryJob(jobId: string) {
+  const job = await getJobById(jobId);
+
+  if (job.status !== "FAILED") {
+    throw new AppError(
+      "Only failed jobs can be retried",
+      409,
+      "INVALID_RETRY_STATUS",
+    );
+  }
+
+  const existingQueueJob = await fileProcessingQueue.getJob(jobId);
+
+  if (existingQueueJob) {
+    await existingQueueJob.remove();
+  }
+
+  await resetJobAttempts(jobId);
+
+  await changeJobStatus(jobId, "PENDING");
+
+  await fileProcessingQueue.add(
+    "file-processing",
+    {
+      jobId: job.id,
+      fileId: job.file.id,
+    },
+    {
+      jobId: job.id,
+      attempts: job.maxAttempts,
+      backoff: {
+        type: "exponential",
+        delay: 1000,
+      },
+      removeOnComplete: false,
+      removeOnFail: false,
+    },
+  );
+
+  return getJobById(jobId);
+}
+
+export async function cancelJob(jobId: string) {
+  const job = await getJobById(jobId);
+
+  if (job.status !== "PENDING") {
+    throw new AppError(
+      "Only pending jobs can be cancelled",
+      409,
+      "INVALID_CANCEL_STATUS",
+    );
+  }
+
+  const existingQueueJob = await fileProcessingQueue.getJob(jobId);
+
+  if (existingQueueJob) {
+    await existingQueueJob.remove();
+  }
+
+  return changeJobStatus(jobId, "FAILED");
 }

@@ -9,7 +9,6 @@ import {
   getFileById,
   downloadFile,
 } from "./file.service.js";
-import { createFileProcessingJob } from "../jobs/job.service.js";
 import {
   createFileSchema,
   fileOwnershipSchema,
@@ -88,7 +87,6 @@ export const fileRoutes: FastifyPluginAsync = async (app) => {
         },
       },
     });
-    await createFileProcessingJob(file.id);
 
     return reply.code(201).send(toFileResponse(file));
   });

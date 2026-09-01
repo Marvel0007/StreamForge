@@ -1,27 +1,30 @@
 import { fileProcessingWorker } from "./file-processing.worker.js";
 
-console.log(
-  "StreamForge file processing worker started",
-);
+console.log("StreamForge file processing worker started");
+console.log("Worker status: HEALTHY");
+
+let isShuttingDown = false;
 
 async function shutdown(signal: string) {
-  console.log(
-    `[worker] Received ${signal}. Shutting down...`,
-  );
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  console.log(`[worker] Received ${signal}. Shutting down...`);
 
   await fileProcessingWorker.close();
 
-  console.log(
-    "[worker] Worker shut down cleanly",
-  );
+  console.log("[worker] Worker shut down cleanly");
 
   process.exit(0);
 }
 
-process.on("SIGINT", () => {
+process.once("SIGINT", () => {
   void shutdown("SIGINT");
 });
 
-process.on("SIGTERM", () => {
+process.once("SIGTERM", () => {
   void shutdown("SIGTERM");
 });

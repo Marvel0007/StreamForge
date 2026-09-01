@@ -23,3 +23,21 @@ export async function getFileProcessingQueueStats() {
     delayed,
   };
 }
+
+export async function pauseFileProcessingQueue(): Promise<void> {
+  await fileProcessingQueue.pause();
+}
+
+export async function resumeFileProcessingQueue(): Promise<void> {
+  await fileProcessingQueue.resume();
+}
+
+export async function getFileProcessingQueueStatus(): Promise<{
+  paused: boolean;
+}> {
+  const paused = await fileProcessingQueue.isPaused();
+
+  return {
+    paused,
+  };
+}

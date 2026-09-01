@@ -28,9 +28,12 @@ export const fileProcessingWorker = new Worker<FileProcessingJobData>(
 
     const startedAt = Date.now();
 
-    await changeJobStatus(jobId, "PROCESSING");
-
     try {
+      const currentJob = await getJobById(jobId);
+
+      if (currentJob.status === "PENDING") {
+        await changeJobStatus(jobId, "PROCESSING");
+      }
       const processingJob = await getJobById(jobId);
 
       const file = processingJob.file;
@@ -71,7 +74,14 @@ export const fileProcessingWorker = new Worker<FileProcessingJobData>(
       const isFinalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
 
       if (isFinalAttempt) {
-        await failJob(jobId, message);
+        try {
+          await failJob(jobId, message);
+        } catch (failureError) {
+          console.error(
+            `[worker] Failed to mark job ${jobId} as FAILED:`,
+            failureError,
+          );
+        }
       }
 
       throw error;
@@ -81,7 +91,11 @@ export const fileProcessingWorker = new Worker<FileProcessingJobData>(
     connection: {
       url: env.REDIS_URL,
     },
-    concurrency: 2,
+    concurrency: env.WORKER_CONCURRENCY,
+    limiter: {
+      max: 10,
+      duration: 1000,
+    },
   },
 );
 
@@ -100,3 +114,9 @@ fileProcessingWorker.on("error", (error) => {
 fileProcessingWorker.on("stalled", (jobId) => {
   console.warn(`[worker] Job stalled: ${jobId}`);
 });
+
+fileProcessingWorker.on("active", (job) => {
+  console.log(`[worker] Job active: ${job.id}`);
+});
+
+// cmtgdzzrt000ekgripwjqig0n

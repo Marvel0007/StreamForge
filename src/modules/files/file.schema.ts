@@ -1,13 +1,7 @@
 export const createFileSchema = {
   body: {
     type: "object",
-    required: [
-      "userId",
-      "originalName",
-      "storageKey",
-      "mimeType",
-      "size",
-    ],
+    required: ["userId", "originalName", "storageKey", "mimeType", "size"],
     properties: {
       userId: {
         type: "string",
@@ -49,7 +43,6 @@ export const listFilesSchema = {
       limit: {
         type: "integer",
         minimum: 1,
-        maximum: 100,
       },
       cursor: {
         type: "string",

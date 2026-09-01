@@ -29,6 +29,20 @@ export async function findJobsByFileId(fileId: string) {
   });
 }
 
+export async function findActiveJobByFileId(fileId: string) {
+  return prisma.job.findFirst({
+    where: {
+      fileId,
+      status: {
+        in: ["PENDING", "PROCESSING"],
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
 export async function incrementJobAttempts(id: string) {
   return prisma.job.update({
     where: {
@@ -38,6 +52,18 @@ export async function incrementJobAttempts(id: string) {
       attempts: {
         increment: 1,
       },
+    },
+  });
+}
+
+export async function resetJobAttempts(id: string) {
+  return prisma.job.update({
+    where: {
+      id,
+    },
+    data: {
+      attempts: 0,
+      error: null,
     },
   });
 }
@@ -88,6 +114,7 @@ export async function updateJobAndFileStatus(
   jobId: string,
   fileId: string,
   status: NonNullable<Prisma.JobUpdateInput["status"]>,
+  error?: string,
 ) {
   return prisma.$transaction(async (tx) => {
     const job = await tx.job.update({
@@ -96,6 +123,11 @@ export async function updateJobAndFileStatus(
       },
       data: {
         status,
+        ...(error !== undefined
+          ? {
+              error,
+            }
+          : {}),
       },
     });
 

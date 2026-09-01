@@ -14,3 +14,6 @@ Thumbs.db
 .idea/
 
 /src/generated/prisma
+
+# Local file storage
+/storage/
